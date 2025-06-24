@@ -1,0 +1,983 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leveraging Small Language Models for On-Device Task Decomposition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --text-color: #2c3e50;
+            --light-bg: #ecf0f1;
+            --white: #ffffff;
+            --border-color: #bdc3c7;
+            --success-color: #27ae60;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: var(--white);
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--secondary-color), var(--accent-color), var(--success-color));
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem 0;
+            background: linear-gradient(135deg, var(--light-bg), var(--white));
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+            font-weight: 300;
+            margin-bottom: 2rem;
+        }
+
+        .authors {
+            font-size: 1.1rem;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .affiliation {
+            font-size: 1rem;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: var(--light-bg);
+            border-radius: 50px;
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-btn {
+            padding: 0.8rem 1.5rem;
+            background: var(--white);
+            border: 2px solid var(--secondary-color);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: var(--secondary-color);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            background: var(--secondary-color);
+            color: var(--white);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section.active, .section.loaded {
+            display: block;
+        }
+
+        .section:last-of-type {
+            border-bottom: none;
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--secondary-color);
+            position: relative;
+        }
+
+        .section h3 {
+            font-size: 1.4rem;
+            color: var(--secondary-color);
+            margin: 2rem 0 1rem 0;
+            padding-left: 1rem;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .abstract {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 2rem;
+            border-radius: 10px;
+            border-left: 5px solid var(--secondary-color);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .keywords {
+            background: var(--light-bg);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .keywords strong {
+            color: var(--primary-color);
+        }
+
+        .methodology-notice {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #f39c12;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .methodology-notice h3 {
+            color: #d68910;
+            margin: 0 0 1rem 0;
+            border: none;
+            padding: 0;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .result-card {
+            background: var(--white);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--secondary-color), var(--success-color));
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
+            border-color: var(--secondary-color);
+        }
+
+        .result-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            color: var(--success-color);
+        }
+
+        .figure {
+            text-align: center;
+            margin: 2rem 0;
+            padding: 1rem;
+            background: var(--light-bg);
+            border-radius: 10px;
+        }
+
+        .figure img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .figure-caption {
+            margin-top: 1rem;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+
+        .limitations {
+            background: #fff5f5;
+            border-left: 5px solid var(--accent-color);
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+        }
+
+        .limitations h3 {
+            color: var(--accent-color);
+            border-left: none;
+            padding-left: 0;
+            margin-top: 0;
+        }
+
+        .limitations ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .limitations li {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .limitations li::before {
+            content: '⚠️';
+            position: absolute;
+            left: 0;
+        }
+
+        .github-link {
+            display: inline-block;
+            background: var(--primary-color);
+            color: var(--white);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 1rem 0;
+        }
+
+        .github-link:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .contact-card {
+            background: linear-gradient(135deg, var(--white), var(--light-bg));
+            border: 2px solid var(--border-color);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--secondary-color), var(--success-color));
+        }
+
+        .contact-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
+            border-color: var(--secondary-color);
+        }
+
+        .contact-card h3 {
+            color: var(--primary-color);
+            margin: 0 0 1.5rem 0;
+            padding: 0;
+            border: none;
+            font-size: 1.3rem;
+        }
+
+        .author-list .author {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .author-list .author:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .author strong {
+            display: block;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .author span {
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            font-family: monospace;
+        }
+
+        .institution-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .institution-info strong {
+            color: var(--primary-color);
+        }
+
+        .institution-info span {
+            color: #7f8c8d;
+        }
+
+        .institution-link {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: var(--secondary-color);
+            color: var(--white);
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .institution-link:hover {
+            background: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .collaboration-info ul {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .collaboration-info li {
+            margin: 0.5rem 0;
+            color: #7f8c8d;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .status-badge.unpublished {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            color: #d68910;
+            border: 2px solid #f39c12;
+        }
+
+        .footer {
+            background: linear-gradient(135deg, var(--primary-color), #34495e);
+            color: var(--white);
+            margin-top: 4rem;
+            padding: 3rem 0 1rem 0;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-section h4 {
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .footer-section p {
+            line-height: 1.6;
+            color: #bdc3c7;
+        }
+
+        .social-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .social-links a {
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            padding: 0.3rem 0;
+        }
+
+        .social-links a:hover {
+            color: var(--secondary-color);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 2rem auto 0 auto;
+            padding: 2rem;
+            border-top: 1px solid #4a5568;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .copyright p {
+            margin: 0.3rem 0;
+            color: #bdc3c7;
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .footer-links a {
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--secondary-color);
+        }
+
+        .footer-links span {
+            color: #7f8c8d;
+        }
+        .section ul {
+            padding-left: 1.5rem;
+            margin-bottom: 1.5rem;
+            list-style-type: disc;
+        }
+
+        .section li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Leveraging Small Language Models to Optimize On-Device Structured Complex Task Decomposition</h1>
+            <p class="subtitle">Privacy-Preserving Virtual Assistants with Enhanced Performance</p>
+            <div class="authors">
+                H.K.N.S. Kumarasinghe, L.P. Nanayakkara, M.S. Dissanayaka, and Thanuja D. Ambegoda
+            </div>
+            <div class="affiliation">
+                Department of Computer Science and Engineering, University of Moratuwa, Sri Lanka
+            </div>
+        </div>
+
+        <nav class="nav">
+            <a href="#" class="nav-btn active" onclick="showSection('abstract')">Abstract</a>
+            <a href="#" class="nav-btn" onclick="showSection('introduction')">Introduction</a>
+            <a href="#" class="nav-btn" onclick="showSection('related-work')">Related Work</a>
+            <a href="#" class="nav-btn" onclick="showSection('methodology')">Methodology</a>
+            <a href="#" class="nav-btn" onclick="showSection('evaluation')">Evaluation</a>
+            <a href="#" class="nav-btn" onclick="showSection('results')">Results</a>
+            <a href="#" class="nav-btn" onclick="showSection('limitations')">Limitations</a>
+
+        </nav>
+
+        <section id="abstract" class="section active">
+            <h2>Abstract</h2>
+            <div class="abstract">
+                Virtual assistants powered by Large Language Models hold immense promise, yet raise privacy concerns when relying on external APIs. This work explores the trade-off between accuracy and privacy in Structured Complex Task Decomposition (STDC) for virtual assistants. We investigate improving the accuracy of open-source small language models using techniques such as Monte Carlo Tree Search, self-criticism, and Direct Preference Optimization. Our methodology aims to enhance the zero-shot performance of models like Qwen2.5-1.5B, Qwen2.5-3B on benchmarks such as TaskLAMA by Google Research, achieving results comparable to Llama3.1-70B while preserving user privacy. This research contributes to the development of privacy-preserving virtual assistants by demonstrating the potential of smaller models for complex task automation.
+            </div>
+            <div class="keywords">
+                <strong>Keywords:</strong> virtual assistant, task decomposition, small language models, privacy
+            </div>
+        </section>
+
+        <section id="introduction" class="section">
+            <h2>Introduction</h2>
+            <p>Virtual assistants powered by Large Language Models are a growing phenomenon, exemplified by assistants like Jarvis. In their daily lives, people are involved in executing multiple tasks of varying temporal granularity in order to achieve their diverse goals. These tasks can range from simple, short-duration activities like washing a cup, to more complex, long-term endeavors such as planning a wedding.</p>
+
+            <h3>Structured Complex Task Decomposition (SCTD)</h3>
+            <p>SCTD involves breaking down a complex real-world task into a directed acyclic graph of individual steps that contribute to accomplishing the task, with edges specifying the temporal dependencies between these steps. This structured approach has been shown to help people achieve tasks better and faster.</p>
+
+            <div class="figure">
+                <img src="tasks.png" alt="Task Graph Visualization" style="width:100%; max-width:700px; border-radius:8px; display:block; margin: 0 auto;">
+                <p style="text-align: center; font-size: 0.9rem; color: #6c757d; margin-top: 0.5rem;">Figure 1: Example task graph for making egg-based mayonnaise</p>
+                <div class="figure-caption">
+                    An example of a task graph for a complex task from the TaskLAMA dataset. Nine steps are outlined. The four steps with horizontal texts can be done in any order.
+                </div>
+            </div>
+
+            <h3>Privacy vs. Accuracy Trade-off</h3>
+            <p>Using open LLMs presents major privacy risks, leading to two main options: using a private cloud or deploying models locally on devices. However, local deployment can significantly reduce accuracy as these models have fewer parameters compared to large, cloud-based LLMs. This work introduces a novel methodology that aims to significantly improve the accuracy of SCTD using small, open-source language models while preserving user privacy.</p>
+
+            <div class="figure">
+                <img src="qwen.jpg" alt="Parameter Count vs. Accuracy Chart" style="width:100%; max-width:700px; border-radius:8px; display:block; margin: 0 auto;">
+                <p style="text-align: center; font-size: 0.9rem; color: #6c757d; margin-top: 0.5rem;">Figure 2: Accuracy of LLMs based on parameter count</p>
+                <div class="figure-caption">
+                    Relationship between model parameter count and accuracy in task decomposition
+                </div>
+            </div>
+        </section>
+
+
+        <section id="related-work" class="section">
+            <h2>Related Work</h2>
+            <p>Works in the literature that relate to this paper can be categorized as follows:</p>
+
+            <h3>Crowd-Sourced SCTD</h3>
+            <p>This line of work uses crowd-sourcing for obtaining the steps and their temporal order for complex tasks. While crowd-sourcing may lead to high-precision task graphs, it is costly and may suffer from low-recall, as new task graphs cannot be built on-the-fly for novel tasks.</p>
+
+            <h3>Query-based SCTD</h3>
+            <p>Another commonly used approach for SCTD is by leveraging user search queries. Sessions are created from search queries of commercial search engines, and steps for complex tasks are proposed by finding queries that frequently co-occur with the complex task in different sessions.</p>
+
+            <h3>Summarization-based SCTD</h3>
+            <p>A summarization-based approach involves performing a web search for a given complex task to identify relevant web pages, and then training a language model to summarize the contents of those web-pages into task graphs.</p>
+
+            <h3>LLM Knowledge Probing</h3>
+            <p>Previous work has shown that LLMs contain a large amount of different types of knowledge, including factual, commonsense, biomedical, numerical, scale, and many other types of knowledge. This work extends these findings by measuring the amount of information one can extract from LLMs for complex tasks requiring multiple steps to be completed.</p>
+        </section>
+
+        <section id="methodology" class="section">
+            <div class="methodology-notice">
+                <h3>🔒 Methodology Section</h3>
+                <p><strong>This section is currently hidden as the research is still unpublished.</strong></p>
+                <p>The detailed methodology, including our novel approaches using Monte Carlo Tree Search, self-criticism mechanisms, and Direct Preference Optimization, will be made available upon publication.</p>
+                <p>For early access or collaboration opportunities, please contact the authors.</p>
+            </div>
+        </section>
+
+        <section id="evaluation" class="section">
+            <h2>Evaluation</h2>
+            <p>Evaluating benchmarks that can simulate the complexity of real-world tasks accurately presents a key challenge. This challenge lies in modeling tool dependencies, which is crucial for effective task automation but difficult to capture in both datasets and evaluation metrics.</p>
+
+            <h3>Existing Benchmarks</h3>
+            <p>Existing benchmarks often fall short of fully showcasing the potential of LLMs for autonomous task completion. Traditional LLM benchmarks, such as MMLU, GSM8K, and AGIEval, assess general knowledge and reasoning, but do not focus on task automation specifically.</p>
+
+            <h3>TaskLAMA Benchmark</h3>
+            <p>While existing benchmarks like MMLU, GSM8K, and APIBench focus on general knowledge, reasoning, or tool interaction, they fail to evaluate the fundamental ability of language models to decompose complex tasks into logical, temporally-dependent steps. Our work builds upon TaskLAMA, which provides a dataset of 1,630 complex tasks with human-annotated task graphs.</p>
+
+            <h3>Evaluation Metrics</h3>
+                <p>We use a comprehensive set of metrics to evaluate both the quality of generated steps and their temporal dependencies.</p>
+
+                <div class="metrics">
+                    <h4>Step Quality Metrics</h4>
+                    <ul>
+                        <li><strong>ROUGE Metrics:</strong> ROUGE-1, ROUGE-2, and ROUGE-L (F1 and F2 scores)</li>
+                        <li><strong>Hungarian Matching:</strong> One-to-one mapping between generated and gold steps using semantic similarity</li>
+                        <li><strong>Relaxed Hungarian Matching:</strong> Allows one-to-two mappings while avoiding metric inflation</li>
+                    </ul>
+
+                    <h4>Temporal Dependency Metrics</h4>
+                    <ul>
+                        <li><strong>In-Degree Overlap:</strong> Measures average overlap between parent nodes (preconditions)</li>
+                        <li><strong>Out-Degree Overlap:</strong> Measures average overlap between child nodes (subsequent steps)</li>
+                        <li><strong>Step Proximity:</strong> Evaluates the temporal closeness of steps</li>
+                        <li><strong>Graph Structure Accuracy:</strong> Measures accuracy in predicting the existence of task dependencies</li>
+                    </ul>
+                </div>
+        </section>
+
+
+        <section id="results" class="section">
+
+
+            <h2>Results</h2>
+
+            <h3>Task Decomposition Results</h3>
+            <div class="results-grid">
+                <div class="result-card">
+                    <h4>Enhanced In-Context Learning (E-ICL)</h4>
+                    <div class="metric">
+                        <span>Llama3.1-70B Performance</span>
+                        <span class="metric-value">460% improvement</span>
+                    </div>
+                    <div class="metric">
+                        <span>Rouge2 F1-Score</span>
+                        <span class="metric-value">10.7 vs 2.9</span>
+                    </div>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #7f8c8d;">
+                        Significant outperformance compared to traditional baselines
+                    </p>
+                </div>
+
+                <div class="result-card">
+                    <h4>Llama3.1-70B MSI Method</h4>
+                    <div class="metric">
+                        <span>Rouge1 F1</span>
+                        <span class="metric-value">40.2</span>
+                    </div>
+                    <div class="metric">
+                        <span>Rouge2 F1</span>
+                        <span class="metric-value">14.5</span>
+                    </div>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #7f8c8d;">
+                        Progressive improvements with sophisticated methods
+                    </p>
+                </div>
+
+                <div class="result-card">
+                    <h4>Qwen2.5-3B with MSI</h4>
+                    <div class="metric">
+                        <span>Rouge1 F1</span>
+                        <span class="metric-value">26.2</span>
+                    </div>
+                    <div class="metric">
+                        <span>Rouge2 F1</span>
+                        <span class="metric-value">8.1</span>
+                    </div>
+                    <div class="metric">
+                        <span>Performance Ratio</span>
+                        <span class="metric-value">65% of Llama3.1-70B</span>
+                    </div>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #7f8c8d;">
+                        23× fewer parameters while maintaining competitive performance
+                    </p>
+                </div>
+            </div>
+
+            <h3>Context Understanding Results</h3>
+            <div class="results-grid">
+                <div class="result-card">
+                    <h4>In-Degree Overlap</h4>
+                    <div class="metric">
+                        <span>Qwen2.5-3B MCTS + SC + DPO</span>
+                        <span class="metric-value">Rouge1: 25.5</span>
+                    </div>
+                    <div class="metric">
+                        <span>Rouge2</span>
+                        <span class="metric-value">13.1</span>
+                    </div>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #7f8c8d;">
+                        Substantial improvements over base MCTS approach
+                    </p>
+                </div>
+
+                <div class="result-card">
+                    <h4>Step Proximity</h4>
+                    <div class="metric">
+                        <span>Rouge1</span>
+                        <span class="metric-value">27.1</span>
+                    </div>
+                    <div class="metric">
+                        <span>Rouge2</span>
+                        <span class="metric-value">9.7</span>
+                    </div>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #7f8c8d;">
+                        Excellent temporal locality understanding
+                    </p>
+                </div>
+            </div>
+
+            <p>These results demonstrate that our comprehensive approach—combining sophisticated step generation with enhanced temporal reasoning—enables smaller models to achieve competitive performance while offering substantial computational advantages. The consistent improvements across all evaluation metrics validate the effectiveness of our multi-faceted enhancement strategy.</p>
+        </section>
+
+        <section id="limitations" class="section">
+            <h2>Limitations</h2>
+            <div class="limitations">
+                <h3>Current Limitations</h3>
+                <p>Measuring the complex task understanding of models is a challenging problem, both in terms of dataset construction and evaluation. Several limitations of this work can be addressed through future research:</p>
+
+                <ul>
+                    <li><strong>Conditional Task Graphs:</strong> Real-world tasks often involve conditional steps. Future work can develop methods to benchmark models for generating conditional task graphs.</li>
+
+                    <li><strong>Granularity:</strong> Task Graphs can be generated at varying levels of granularity, making evaluation difficult. Future research can explore ways to generate and evaluate task graphs at different levels of granularity.</li>
+
+                    <li><strong>Similarity vs. Entailment:</strong> Measuring step overlap based on similarity fails to capture cases where two steps are not textually similar but one entails the other. Future work can utilize entailment models for a more nuanced evaluation.</li>
+
+                    <li><strong>Simultaneous Generation:</strong> This work examined approaches where steps and temporal dependencies were produced independently. Future research can explore models that generate both simultaneously.</li>
+
+                    <li><strong>Computational Constraints:</strong> The reliance on locally deployed LLMs has introduced performance bottlenecks, with challenges in processing large task volumes efficiently on-device. Ongoing efforts are focused on optimizing model inference through techniques like quantization and edge computing.</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="contact" class="section">
+            <h2>Contact & Information</h2>
+
+            <div class="contact-grid">
+                <div class="contact-card">
+                    <h3>👥 Authors</h3>
+                    <div class="author-list">
+                        <div class="author">
+                            <strong>H.K.N.S. Kumarasinghe</strong>
+                            <span>nadunk.20@cse.mrt.ac.lk</span>
+                        </div>
+                        <div class="author">
+                            <strong>L.P. Nanayakkara</strong>
+                            <span>ludeesha.20@cse.mrt.ac.lk</span>
+                        </div>
+                        <div class="author">
+                            <strong>M.S. Dissanayaka</strong>
+                            <span>maliths.20@cse.mrt.ac.lk</span>
+                        </div>
+                        <div class="author">
+                            <strong>Thanuja D. Ambegoda</strong>
+                            <span>thanuja@cse.mrt.ac.lk</span>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="contact-card">
+                    <h3>📧 Collaboration</h3>
+                    <div class="collaboration-info">
+                        <p>Interested in our research or potential collaboration?</p>
+                        <p>We welcome discussions about:</p>
+                        <ul>
+                            <li>Task decomposition methodologies</li>
+                            <li>Privacy-preserving AI systems</li>
+                            <li>On-device language model optimization</li>
+                            <li>Virtual assistant technologies</li>
+                        </ul>
+                        <p>Please reach out to any of the authors above.</p>
+                    </div>
+                </div>
+
+                <div class="contact-card">
+                    <h3>📄 Publication Status</h3>
+                    <div class="publication-info">
+                        <div class="status-badge unpublished">
+                            <span>🔒 Unpublished Research</span>
+                        </div>
+                        <p>This work is currently under review. Full methodology and implementation details will be available upon publication.</p>
+                        <p>For early access or research collaboration, please contact the corresponding authors.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="copyright">
+                <p>&copy; 2025 University of Moratuwa, Department of Computer Science and Engineering</p>
+                <p>This research is protected by academic intellectual property rights. Unauthorized reproduction or distribution is prohibited.</p>
+            </div>
+            <div class="footer-links">
+                <a href="#" onclick="showSection('abstract')">Back to Top</a>
+                <span class="dot">•</span>
+                <a href="https://www.mrt.ac.lk" target="_blank">University of Moratuwa</a>
+                <span class="dot">•</span>
+                <a href="mailto:nadunk.20@cse.mrt.ac.lk">Contact Authors</a>
+            </div>
+        </div>
+    </footer>
+
+
+
+    <script>
+        const sectionOrder = ['abstract', 'introduction', 'related-work',  'evaluation', 'results', 'limitations', 'contact'];
+        let isScrolling = false;
+        let loadedSections = new Set(['abstract']);
+
+        function showSection(sectionId) {
+            // Show all sections up to and including the selected one
+            const targetIndex = sectionOrder.indexOf(sectionId);
+            for (let i = 0; i <= targetIndex; i++) {
+                const section = document.getElementById(sectionOrder[i]);
+                section.classList.add('loaded');
+                loadedSections.add(sectionOrder[i]);
+            }
+
+            // Remove active class from all nav buttons
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Add active class to clicked nav button
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Find and activate the corresponding nav button
+                const navBtn = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
+                if (navBtn) navBtn.classList.add('active');
+            }
+
+            // Scroll to the target section
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }
+
+        function getCurrentActiveSection() {
+            // Find the section that's currently in the viewport
+            const sections = document.querySelectorAll('.section.loaded');
+            let currentSection = 'abstract';
+
+            sections.forEach(section => {
+                const rect = section.getBoundingClientRect();
+                const navHeight = document.querySelector('.nav').offsetHeight;
+
+                if (rect.top <= navHeight + 50) {
+                    currentSection = section.id;
+                }
+            });
+
+            return currentSection;
+        }
+
+        function getNextSection(currentSection) {
+            const currentIndex = sectionOrder.indexOf(currentSection);
+            if (currentIndex < sectionOrder.length - 1) {
+                return sectionOrder[currentIndex + 1];
+            }
+            return null;
+        }
+
+        function loadNextSection() {
+            const currentSection = getCurrentActiveSection();
+            const nextSection = getNextSection(currentSection);
+
+            if (nextSection && !loadedSections.has(nextSection)) {
+                const section = document.getElementById(nextSection);
+                section.classList.add('loaded');
+                loadedSections.add(nextSection);
+
+                // Update active nav button
+                updateActiveNavButton(nextSection);
+
+                return true;
+            }
+            return false;
+        }
+
+        function updateActiveNavButton(sectionId) {
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            const activeBtn = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        function handleScroll() {
+            if (isScrolling) return;
+
+            const windowHeight = window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+            // Check if user has scrolled near the bottom
+            if (scrollTop + windowHeight >= documentHeight - 200) {
+                loadNextSection();
+            }
+
+            // Update active navigation based on current viewport
+            const currentSection = getCurrentActiveSection();
+            updateActiveNavButton(currentSection);
+        }
+
+        // Add smooth scrolling effect and scroll listener
+        document.addEventListener('DOMContentLoaded', function() {
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    isScrolling = true;
+                    setTimeout(() => {
+                        isScrolling = false;
+                    }, 1000);
+                });
+            });
+
+            // Add scroll event listener
+            let scrollTimeout;
+            window.addEventListener('scroll', function() {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(handleScroll, 50);
+            });
+
+            // Initialize first section
+            document.getElementById('abstract').classList.add('loaded');
+        });
+    </script>
+</body>
+</html>
